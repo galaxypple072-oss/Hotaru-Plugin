@@ -1,0 +1,83 @@
+// Native Music scripting API only. No System Events or simulated input.
+function run(argv) {
+  var action = argv[0], input = JSON.parse(argv[1] || '{}');
+  var music = Application('com.apple.Music');
+  if (!music.running()) return JSON.stringify({ running: false, state: 'stopped' });
+  function playlists() {
+    var lists = music.userPlaylists, names = lists.name(), ids = lists.persistentID(), kinds = lists.specialKind(), smart = lists.smart();
+    return names.map(function(name, i) { return { id: ids[i], name: name, kind: String(kinds[i]), smart: smart[i] }; });
+  }
+  if (action === 'playlists') return JSON.stringify({ playlists: playlists() });
+  function playlist(id) {
+    var found = music.userPlaylists.whose({ persistentID: id })();
+    if (!found.length) throw new Error('Playlist no longer exists');
+    return found[0];
+  }
+  function playlistTracks(id, offset, limit) {
+    var list = playlist(id), tracks = list.tracks;
+    var names = tracks.name(), artists = tracks.artist(), albums = tracks.album(), durations = tracks.duration(), ids = tracks.persistentID();
+    var end = Math.min(names.length, offset + limit), rows = [];
+    for (var i = offset; i < end; i++) rows.push({ persistentId: ids[i], title: names[i], artist: artists[i], album: albums[i], duration: durations[i] });
+    return { playlist: { id: id, name: list.name(), smart: list.smart() }, total: names.length, offset: offset, tracks: rows };
+  }
+  if (action === 'playlist-tracks') return JSON.stringify(playlistTracks(input.playlistId, input.offset || 0, input.limit || 200));
+  if (action === 'playlist-add-native') {
+    var destination = playlist(input.playlistId), candidates = music.search(music.libraryPlaylists[0], { for: input.title, only: 'songs' });
+    var candidate = null;
+    for (var c = 0; c < candidates.length; c++) {
+      if (candidates[c].name() === input.title && candidates[c].artist() === input.artist
+          && (!input.album || candidates[c].album() === input.album)
+          && Math.abs(candidates[c].duration() - input.duration) < 3) { candidate = candidates[c]; break; }
+    }
+    if (!candidate) return JSON.stringify({ needsCatalog: true });
+    if (input.favorites) candidate.favorited = true;
+    else music.duplicate(candidate, { to: destination });
+    return JSON.stringify({ requested: true });
+  }
+  if (action === 'play-track') {
+    function same(track) {
+      try {
+        return track.name() === input.title && (track.artist() === input.artist || Math.abs(track.duration() - input.duration) < 3);
+      } catch (_) { return false; }
+    }
+    var target = null, currentMatches = false;
+    if (input.playlistId && input.persistentId) {
+      var selected = playlist(input.playlistId).tracks.whose({ persistentID: input.persistentId })();
+      if (!selected.length) throw new Error('Track was removed from the playlist');
+      target = selected[0];
+    }
+    try { if (!target && same(music.currentTrack())) { target = music.currentTrack(); currentMatches = true; } } catch (_) {}
+    if (!target) {
+      // Music's library API can play saved tracks in the background. It cannot
+      // turn arbitrary catalog URLs into scriptable tracks.
+      try {
+        var tracks = music.search(music.libraryPlaylists[0], { for: input.title, only: 'songs' });
+        for (var i = 0; i < tracks.length; i++) if (same(tracks[i])) { target = tracks[i]; break; }
+      } catch (_) {}
+    }
+    if (!target) return JSON.stringify({ running: true, state: music.playerState(), needsClient: true });
+    if (currentMatches) {
+      if (Math.abs(music.playerPosition() - input.position) > 1) music.playerPosition = Math.min(input.position, target.duration());
+      music.play();
+    } else {
+      // A track reference alone inherits Music's unrelated queue and Infinity
+      // recommendations. Diary playlists advance explicitly after each stop.
+      music.play(target, { once: Boolean(input.playlistId) });
+      if (input.position > 0) music.playerPosition = Math.min(input.position, target.duration());
+    }
+  }
+  else if (action === 'play') music.play();
+  else if (action === 'pause') music.pause();
+  else if (action === 'next') music.nextTrack();
+  else if (action === 'previous') music.previousTrack();
+  else if (action === 'seek') music.playerPosition = Math.min(input.position, music.currentTrack().duration());
+  else if (action !== 'state') throw new Error('Unsupported Music action');
+  var result = { running: true, state: music.playerState(), position: 0, track: null };
+  try {
+    var track = music.currentTrack();
+    result.position = music.playerPosition();
+    result.track = { title: track.name(), artist: track.artist(), album: track.album(),
+      duration: track.duration(), persistentId: track.persistentID() };
+  } catch (_) { /* Music may have no current track. */ }
+  return JSON.stringify(result);
+}

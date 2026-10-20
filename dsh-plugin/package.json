@@ -1,0 +1,64 @@
+{
+  "name": "@emilia/companion-loop",
+  "version": "0.1.0",
+  "description": "Hotaru V0.1 (汐见萤) character plugin for DeepSeek Harness",
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./index.js",
+    "./model": "./model.js",
+    "./client": "./client.js"
+  },
+  "files": [
+    "index.js",
+    "model.js",
+    "character-profile.js",
+    "state.js",
+    "runtime-config.js",
+    "services.example.json",
+    "pet-control.js",
+    "voice-cache.js",
+    "mobile-bootstrap.js",
+    "remote-api.js",
+    "companion-api.js",
+    "companion-store.js",
+    "companion-engine.js",
+    "companion-content.js",
+    "characters.js",
+    "qwen-character.js",
+    "client.js",
+    "cordis.patch.yml",
+    "README.md",
+    "hotaru-persona.js",
+    "music-store.js",
+    "music-covers.js",
+    "music-diary.js",
+    "apple-music-mac.js",
+    "apple-music-mac.jxa",
+    "apple-music-artwork.applescript",
+    "native/apple-music-ui.swift",
+    "music-intent.js",
+    "hotaru-memory.js",
+    "avatars.js",
+    "assets/avatars",
+    "assets/music-wall"
+  ],
+  "dsh": {
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-settings",
+        "@deepseek-ai/dsh-client-ui-model-selection"
+      ],
+      "platform": "web"
+    },
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "agentsTime": {
+    "character": "hotaru"
+  }
+}

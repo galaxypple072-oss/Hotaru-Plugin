@@ -1,0 +1,12 @@
+/dist/
+node_modules/
+.DS_Store
+__pycache__/
+pet-live2d-mac/build/
+pet-live2d-mac/dist/
+pet-live2d-mac/public/assets/**
+!pet-live2d-mac/public/assets/README.md
+dsh-plugin/native/apple-music-ui
+*.sqlite*
+.env
+.env.*

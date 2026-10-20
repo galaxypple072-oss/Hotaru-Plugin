@@ -1,0 +1,9 @@
+{
+  "name": "hotaru-plugin",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "test": "node --test --test-timeout=30000 test/*.test.mjs",
+    "build:release": "python3 scripts/build-character-release.py"
+  }
+}
